@@ -106,8 +106,8 @@ def main():
                 current_comment = comment
 
                 # Find out if its referencing an xkcd
-                if comment.author.name == config.username:
-                    # Dont reply to self
+                if 'i am a bot' in comment.body.lower() or "i'm a bot" in comment.body.lower():
+                    # Dont reply to self or bots
                     continue
                 comic_number = re.findall('xkcd\.com\/(\d*).*',comment.body)
                 if not comic_number or comic_number[0] == '':
