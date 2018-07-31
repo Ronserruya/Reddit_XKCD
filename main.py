@@ -106,7 +106,7 @@ def main():
                 current_comment = comment
 
                 # Find out if its referencing an xkcd
-                if comment.author.name != config.username:
+                if comment.author.name == config.username:
                     # Dont reply to self
                     continue
                 comic_number = re.findall('xkcd\.com\/(\d*).*',comment.body)
