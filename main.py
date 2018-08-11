@@ -2,6 +2,7 @@ import re
 
 import requests
 from bs4 import BeautifulSoup as soup
+from bs4.element import NavigableString
 import praw
 from prawcore.exceptions import Forbidden
 
@@ -9,6 +10,7 @@ import config
 
 COMMENT_BODY = "{}  \n" \
                "[Image Link]({})  \n" \
+               "Title Text: {}  \n\n" \
                "Transcript:  \n\n" \
                "{}  \n\n" \
                "^[Explanation]({})  \n" \
@@ -44,8 +46,8 @@ def get_transcript(page):
     transcript = ''
 
     # Keep going until you are not in the transcript block anymore
-    while next.name != 'h2':
-        if next == '\n':
+    while next.name not in ['h2','h1','span']:
+        if isinstance(next, NavigableString):
             transcript += '\n'
         else:
             transcript += next.get_text()
@@ -70,7 +72,12 @@ def get_explanation_url(comic_number):
     return 'http://www.explainxkcd.com/wiki/index.php/{}#Explanation'.format(comic_number)
 
 
-def report_exception(reddit,comment,exception):
+def get_title_text(page):
+    title_text_header = page.find(text='Title text:')
+    return str(title_text_header.next_element)
+
+
+def report_exception(reddit, comment, exception):
     # Send a the exception to me in a PM
     try:
         print(exception)
@@ -104,10 +111,12 @@ def main():
         try:
             # Get all comments on /r/all , skipping comments before the bot stated running
             for comment in reddit.subreddit('all').stream.comments(skip_existing=True):
-
                 # Save the comment for the exception scope
                 current_comment = comment
 
+                if 'xkcd' in comment.subreddit_name_prefixed:
+                    # this subs have their own bots
+                    continue
                 if 'i am a bot' in comment.body.lower() or "i'm a bot" in comment.body.lower():
                     # Dont reply to self or bots
                     continue
@@ -121,9 +130,10 @@ def main():
                 title = get_title(page)
                 image = get_image_link(title)
                 transcript = get_transcript(page)
+                title_text = get_title_text(page)
                 explanation_url = get_explanation_url(comic_number[0])
 
-                reply = COMMENT_BODY.format(title,image,transcript,explanation_url,config.developer)
+                reply = COMMENT_BODY.format(title, image, title_text, transcript, explanation_url, config.developer)
                 try:
                     comment.reply(reply)
                 except Forbidden:
