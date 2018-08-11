@@ -16,6 +16,7 @@ COMMENT_BODY = "{}  \n" \
                "[Code](https://github.com/ronserruya/Reddit_XKCD)|" \
                "[Contact](https://www.reddit.com/message/compose/?to={})"
 
+
 def bot_login():
     # Login with praw
     print("Logging in...")
@@ -105,11 +106,11 @@ def main():
                 # Save the comment for the exception scope
                 current_comment = comment
 
-                # Find out if its referencing an xkcd
                 if 'i am a bot' in comment.body.lower() or "i'm a bot" in comment.body.lower():
                     # Dont reply to self or bots
                     continue
-                comic_number = re.findall('xkcd\.com\/(\d*).*',comment.body)
+                # Find out if its referencing an xkcd
+                comic_number = re.findall('(?<!what-if.)xkcd\.com\/(\d*).*',comment.body)
                 if not comic_number or comic_number[0] == '':
                     continue
 
