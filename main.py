@@ -3,6 +3,7 @@ import re
 import requests
 from bs4 import BeautifulSoup as soup
 import praw
+from prawcore.exceptions import Forbidden
 
 import config
 
@@ -37,19 +38,20 @@ def get_HTML(comic_number):
     return response.content.decode()
 
 
-def get_transcript(html):
-    # Find all html between the "Transcript" and "Description" headers
-    transcript_HTML = re.findall('<h2><span class=\"mw-headline\" id=\"Transcript\">.*<span id=\"Discussion\"></span>'
-                      ,html,re.DOTALL)[0]
+def get_transcript(page):
+    transcript_header = page.find(id='Transcript').parent
+    next = transcript_header.next_sibling
+    transcript = ''
 
-    # Get all text
-    transcript = soup(transcript_HTML,'html5lib').getText()
-
-    # Remove the transcript header
-    transcript = transcript.split('Transcript[edit]')[1]
-
-    # Fix formatting for reddit markdown
-    return transcript.replace('\n','  \n')
+    # Keep going until you are not in the transcript block anymore
+    while next.name != 'h2':
+        if next == '\n':
+            transcript += '\n'
+        else:
+            transcript += next.get_text()
+        next = next.next_sibling
+    # Fix for reddit markdown
+    return transcript.replace('\n', '  \n')
 
 
 def get_image_link(title):
@@ -118,18 +120,22 @@ def main():
                 page = soup(html,'html5lib')
                 title = get_title(page)
                 image = get_image_link(title)
-                transcript = get_transcript(html)
+                transcript = get_transcript(page)
                 explanation_url = get_explanation_url(comic_number[0])
 
                 reply = COMMENT_BODY.format(title,image,transcript,explanation_url,config.developer)
-                comment.reply(reply)
+                try:
+                    comment.reply(reply)
+                except Forbidden:
+                    # banned :(
+                    continue
                 print('Replied to comment {}'.format(comment.permalink))
         except Exception as e:
             report_exception(reddit,current_comment,e)
             errors += 1
 
             # Shut down if i got 10 errors
-            if errors >=10:
+            if errors >= 10:
                 report_shutdown(reddit)
                 quit(1)
 
